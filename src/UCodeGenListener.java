@@ -47,7 +47,12 @@ public class UCodeGenListener extends MiniCBaseListener {
         //String params = newTexts.get(ctx.params());
         String compound = newTexts.get(ctx.compound_stmt());
         if(ctx.getChild(1).getText().equals("main"))
-            str += "main       proc " + var_num + " 2 2\n" + compound;
+            str += "main       proc " + var_num + " 2 2\n";
+
+        for(int i=0 ; i<var_num ; i++)
+            str += "           sym 2 " + (i+1) + " 1\n";
+
+        str += compound;
 
         newTexts.put(ctx, str);
     }
@@ -64,36 +69,22 @@ public class UCodeGenListener extends MiniCBaseListener {
 
     @Override
     public void exitStmt(MiniCParser.StmtContext ctx) {
-
-        if(ctx.getChild(0) == ctx.expr_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.expr_stmt()));
-
-        else if(ctx.getChild(0) == ctx.if_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.if_stmt()));
-
-        else if(ctx.getChild(0) == ctx.while_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.while_stmt()));
-
-        else if(ctx.getChild(0) == ctx.compound_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.compound_stmt()));
-
-        else
-            newTexts.put(ctx, newTexts.get(ctx.return_stmt()));
-    }
-
-    @Override
-    public void enterStmt(MiniCParser.StmtContext ctx){
-        String str = var_num + " 2 2\n";
-        for(int i=0 ; i<var_num ; i++)
-            str += "           sym 2 " + (i+1) + " 1\n";
-
-        newTexts.put(ctx, str);
+        stmtCheck(ctx);
     }
 
     @Override
     public void exitExpr_stmt(MiniCParser.Expr_stmtContext ctx) {
-        String expr = newTexts.get(ctx.expr());
-        newTexts.put(ctx, expr);
+        String str = "";
+
+        if(ctx.expr().getChild(1).getText().equals("=")){
+            Node var = findNode(ctx.expr().getChild(0).getText());
+            str += newTexts.get(ctx.expr().expr(0));
+            str += "           str 2 " + var.num + "\n";
+        }
+
+        str += newTexts.get(ctx.expr());
+
+        newTexts.put(ctx, str);
     }
 
     @Override
@@ -135,9 +126,6 @@ public class UCodeGenListener extends MiniCBaseListener {
             var_list.add(new Node(ctx.getChild(1).getText(), var_num));
         }
 
-        if(ctx.getChild(2).getText().equals("="))
-            str += "           ldc " + ctx.getChild(3).getText() + "\n" + "           str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
-
         newTexts.put(ctx, str);
     }
 
@@ -156,16 +144,22 @@ public class UCodeGenListener extends MiniCBaseListener {
         String str = "";
 
         if(ctx.getChildCount() == 1 && ctx.LITERAL() != null)
-            str += "           ldc " + ctx.getChild(0).getText() + "\n";
+            str += "           ldc " + ctx.LITERAL().getText() + "\n";
 
         else if(ctx.getChildCount() == 1 && ctx.IDENT() != null){
-            Node var = findNode(ctx.getChild(0).getText());
+            Node var = findNode(ctx.IDENT().getText());
             str += "           lod 2 " + var.num + "\n";
         }
 
-        else if(ctx. getChildCount() == 3 && ctx.getChild(1).getText().equals("=")){
-            Node var = findNode(ctx.getChild(0).getText());
-            str += "           str 2 " + var.num + "\n";
+        else if(ctx.getChildCount() == 2){
+            str += newTexts.get(ctx.expr(0));
+            if(ctx.getChild(0).getText().equals("-"))
+                str += "           neg\n";
+            else if(ctx.getChild(0).getText().equals("--"))
+                str += "           dec\n";
+
+            else if(ctx.getChild(0).getText().equals("++"))
+                str += "           inc\n";
         }
 
         else if(ctx.getChildCount() == 3 && !ctx.getChild(1).getText().equals("=")){
@@ -179,17 +173,27 @@ public class UCodeGenListener extends MiniCBaseListener {
 
             else if(ctx.getChild(1).getText().equals("/"))
                 str += "           div\n";
+
+            else if(ctx.getChild(1).getText().equals("-"))
+                str += "           sub\n";
         }
 
-        else if(ctx.getChildCount() == 4)
-            str += "           call " + ctx.getChild(0).getText() + "\n";
+        else if(ctx.getChildCount() == 4) {
+            str += "           ldp\n"
+                    + newTexts.get(ctx.args())
+                    + "           call " + ctx.getChild(0).getText() + "\n";
+        }
 
         newTexts.put(ctx, str);
     }
 
     @Override
     public void exitArgs(MiniCParser.ArgsContext ctx) {
+        String str = "";
+        for(int i=0 ; i<ctx.expr().size() ; i++)
+            str += newTexts.get(ctx.expr(i));
 
+        newTexts.put(ctx, str);
     }
 
     private Node findNode(String str){
@@ -209,5 +213,22 @@ public class UCodeGenListener extends MiniCBaseListener {
             this.id = id;
             this.num = num;
         }
+    }
+
+    private void stmtCheck(MiniCParser.StmtContext ctx) {
+        if(ctx.getChild(0) == ctx.expr_stmt())
+            newTexts.put(ctx, newTexts.get(ctx.expr_stmt()));
+
+        else if(ctx.getChild(0) == ctx.if_stmt())
+            newTexts.put(ctx, newTexts.get(ctx.if_stmt()));
+
+        else if(ctx.getChild(0) == ctx.while_stmt())
+            newTexts.put(ctx, newTexts.get(ctx.while_stmt()));
+
+        else if(ctx.getChild(0) == ctx.compound_stmt())
+            newTexts.put(ctx, newTexts.get(ctx.compound_stmt()));
+
+        else
+            newTexts.put(ctx, newTexts.get(ctx.return_stmt()));
     }
 }

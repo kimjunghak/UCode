@@ -131,7 +131,22 @@ public class UCodeGenListener extends MiniCBaseListener {
 
     @Override
     public void exitIf_stmt(MiniCParser.If_stmtContext ctx) {
+        String str = "";
+        str += newTexts.get(ctx.expr());
+        str += "           fjp $$" + depth + "\n";
 
+        if(ctx.getChildCount() == 5)
+            depth++;
+        /*else {
+            depth++;
+            str += "$$" + (depth+1) + "        nop\n";
+            str += newTexts.get(ctx.stmt(1));
+        }*/
+
+        str += newTexts.get(ctx.stmt(0));
+        str += "$$" + (depth-1) + "        nop\n";
+
+        newTexts.put(ctx, str);
     }
 
     @Override
@@ -142,40 +157,66 @@ public class UCodeGenListener extends MiniCBaseListener {
     @Override
     public void exitExpr(MiniCParser.ExprContext ctx) {
         String str = "";
+        String space = "           ";
 
         if(ctx.getChildCount() == 1 && ctx.LITERAL() != null)
-            str += "           ldc " + ctx.LITERAL().getText() + "\n";
+            str += space + "ldc " + ctx.LITERAL().getText() + "\n";
 
         else if(ctx.getChildCount() == 1 && ctx.IDENT() != null){
             Node var = findNode(ctx.IDENT().getText());
-            str += "           lod 2 " + var.num + "\n";
+            str += space + "lod 2 " + var.num + "\n";
         }
 
         else if(ctx.getChildCount() == 2){
             str += newTexts.get(ctx.expr(0));
             if(ctx.getChild(0).getText().equals("-"))
-                str += "           neg\n";
-            else if(ctx.getChild(0).getText().equals("--"))
-                str += "           dec\n";
+                str += space + "neg\n";
+            else if(ctx.getChild(0).getText().equals("--")) {
+                str += space + "dec\n";
+                str += space + "str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
+            }
 
-            else if(ctx.getChild(0).getText().equals("++"))
-                str += "           inc\n";
+            else if(ctx.getChild(0).getText().equals("++")) {
+                str += space + "inc\n";
+                str += space + "str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
+            }
         }
 
         else if(ctx.getChildCount() == 3 && !ctx.getChild(1).getText().equals("=")){
             str += newTexts.get(ctx.expr(0)) + newTexts.get(ctx.expr(1));
 
             if(ctx.getChild(1).getText().equals(">"))
-                str += "           gt\n";
+                str += space + "gt\n";
+
+            else if(ctx.getChild(1).getText().equals("<"))
+                str += space + "lt\n";
 
             else if(ctx.getChild(1).getText().equals("+"))
-                str += "           add\n";
+                str += space + "add\n";
 
             else if(ctx.getChild(1).getText().equals("/"))
-                str += "           div\n";
+                str += space + "div\n";
 
             else if(ctx.getChild(1).getText().equals("-"))
-                str += "           sub\n";
+                str += space + "sub\n";
+
+            else if(ctx.getChild(1).getText().equals("*"))
+                str += space + "mult\n";
+
+            else if(ctx.getChild(1).getText().equals("%"))
+                str += space + "mod\n";
+
+            else if(ctx.getChild(1).getText().equals("!="))
+                str += space + "ne\n";
+
+            else if(ctx.getChild(1).getText().equals("<="))
+                str += space + "le\n";
+
+            else if(ctx.getChild(1).getText().equals(">="))
+                str += space + "ge\n";
+
+            else if(ctx.getChild(1).getText().equals("=="))
+                str += space + "eq\n";
         }
 
         else if(ctx.getChildCount() == 4) {

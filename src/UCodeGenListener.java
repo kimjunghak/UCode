@@ -10,13 +10,12 @@ import java.util.ArrayList;
 public class UCodeGenListener extends MiniCBaseListener{
 
     ParseTreeProperty<String> newTexts = new ParseTreeProperty<>();
+    int local_var_num = 0;
     int var_num = 0;
-    int param_num = 0;
+    int array_num = 0;
     int depth = 0;
+    ArrayList<Node> local_var_list = new ArrayList<>();
     ArrayList<Node> var_list = new ArrayList<>();
-
-    public UCodeGenListener() throws IOException {
-    }
 
     @Override
     public void exitProgram(MiniCParser.ProgramContext ctx) throws IOException {
@@ -28,7 +27,7 @@ public class UCodeGenListener extends MiniCBaseListener{
         str += "           ret\n" + "           end\n" + "           bgn 0\n" + "           ldp\n"
                 + "           call main\n"   + "           end\n";
 
-        //System.out.print(str);
+        System.out.print(str);
         writer.write(str);
 
         writer.close();
@@ -48,41 +47,51 @@ public class UCodeGenListener extends MiniCBaseListener{
 
     @Override
     public void exitVar_decl(MiniCParser.Var_declContext ctx) {
+        String str = "";
+        if(ctx.getChildCount() == 3)
+            var_list.add(new Node(ctx.getChild(1).getText(), ++var_num, false));
 
+        else{
+            var_list.add(new Node(ctx.getChild(1).getText(), ++var_num, true));
+            array_num = Integer.parseInt(ctx.LITERAL().getText());
+        }
+        newTexts.put(ctx, str);
     }
 
     @Override
     public void exitFun_decl(MiniCParser.Fun_declContext ctx) {
         String str = "";
         String space = "";
-        //String params = newTexts.get(ctx.params());
         String compound = newTexts.get(ctx.compound_stmt());
         for(int i=0 ; i<11 - ctx.getChild(1).getText().length() ; i++)
             space += " ";
 
-        str += ctx.getChild(1).getText() + space + "proc " + (param_num + var_num) + " 2 2\n";
+        str += ctx.getChild(1).getText() + space + "proc " + local_var_num + " 2 2\n";
 
-        for(int i=0 ; i<var_num ; i++)
-            str += "           sym 2 " + (i+1) + " 1\n";
+        for(int i = 0; i< local_var_num; i++) {
+            if(local_var_list.get(i).isArray == true)
+                str += "           sym 2 " + (i + 1) + " " + array_num + "\n";
+            else
+                str += "           sym 2 " + (i + 1) + " 1\n";
+        }
 
         str += compound;
+
+        local_var_num = 0;
+        array_num = 0;
 
         newTexts.put(ctx, str);
     }
 
     @Override
     public void exitParams(MiniCParser.ParamsContext ctx) {
-        String str = "";
         for(int i=0 ; i<ctx.param().size() ; i++)
-            str += newTexts.get(ctx.param(i));
-
-        newTexts.put(ctx, str);
+            newTexts.get(ctx.param(i));
     }
 
     @Override
     public void exitParam(MiniCParser.ParamContext ctx) {
-        param_num++;
-
+        local_var_list.add(new Node(ctx.getChild(1).getText(), ++local_var_num, false));
     }
 
     @Override
@@ -95,7 +104,9 @@ public class UCodeGenListener extends MiniCBaseListener{
         String str = "";
 
         if(ctx.expr().getChild(1).getText().equals("=")){
-            Node var = findNode(ctx.expr().getChild(0).getText());
+            Node var;
+            var = findNode(ctx.expr().getChild(0).getText());
+
             str += newTexts.get(ctx.expr().expr(0));
             str += "           str 2 " + var.num + "\n";
         }
@@ -136,15 +147,16 @@ public class UCodeGenListener extends MiniCBaseListener{
         newTexts.put(ctx, str);
     }
 
+
     @Override
     public void exitLocal_decl(MiniCParser.Local_declContext ctx) {
         String str = "";
-        if(ctx.getChildCount() == 3) {
-            var_num++;
-            var_list.add(new Node(ctx.getChild(1).getText(), var_num));
-        }
-        else{
+        if(ctx.getChildCount() == 3)
+            local_var_list.add(new Node(ctx.getChild(1).getText(), ++local_var_num, false));
 
+        else{
+            local_var_list.add(new Node(ctx.getChild(1).getText(), ++local_var_num, true));
+            array_num = Integer.parseInt(ctx.LITERAL().getText());
         }
 
         newTexts.put(ctx, str);
@@ -181,26 +193,30 @@ public class UCodeGenListener extends MiniCBaseListener{
         String str = "";
         String space = "           ";
 
-        if(ctx.getChildCount() == 1 && ctx.LITERAL() != null)
+        if(isLiteral(ctx))
             str += space + "ldc " + ctx.LITERAL().getText() + "\n";
 
-        else if(ctx.getChildCount() == 1 && ctx.IDENT() != null){
+        else if(isIdent(ctx)){
             Node var = findNode(ctx.IDENT().getText());
+
             str += space + "lod 2 " + var.num + "\n";
         }
 
         else if(ctx.getChildCount() == 2){
             str += newTexts.get(ctx.expr(0));
+
+            Node var = findNode(ctx.getChild(1).getText());
+
             if(ctx.getChild(0).getText().equals("-"))
                 str += space + "neg\n";
             else if(ctx.getChild(0).getText().equals("--")) {
                 str += space + "dec\n";
-                str += space + "str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
+                str += space + "str 2 " + var.num + "\n";
             }
 
             else if(ctx.getChild(0).getText().equals("++")) {
                 str += space + "inc\n";
-                str += space + "str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
+                str += space + "str 2 " + var.num + "\n";
             }
 
             else if(ctx.getChild(0).getText().equals("!"))
@@ -245,12 +261,30 @@ public class UCodeGenListener extends MiniCBaseListener{
         }
 
         else if(ctx.getChildCount() == 4) {
-            str += "           ldp\n"
-                    + newTexts.get(ctx.args())
-                    + "           call " + ctx.getChild(0).getText() + "\n";
+            if (ctx.args() != null) {
+                str += space + "ldp\n"
+                        + newTexts.get(ctx.args())
+                        + space + "call " + ctx.getChild(0).getText() + "\n";
+            }
+        }
+
+        else if(ctx.getChildCount() == 6){
+            Node var = findNode(ctx.IDENT().getText());
+            str += newTexts.get(ctx.expr(0))
+                    + space + "lda 2 " + var.num + "\n"
+                    + space + "add\n" + newTexts.get(ctx.expr(1))
+                    + space + "sti\n";
         }
 
         newTexts.put(ctx, str);
+    }
+
+    private boolean isIdent(MiniCParser.ExprContext ctx) {
+        return ctx.getChildCount() == 1 && ctx.IDENT() != null;
+    }
+
+    private boolean isLiteral(MiniCParser.ExprContext ctx) {
+        return ctx.getChildCount() == 1 && ctx.LITERAL() != null;
     }
 
     @Override
@@ -262,9 +296,27 @@ public class UCodeGenListener extends MiniCBaseListener{
         newTexts.put(ctx, str);
     }
 
-    private Node findNode(String str){
+    private Node findNode(String text) {
+        Node var;
+        if (find_local_var(text) != null)
+            var = find_local_var(text);
+        else
+            var = find_var(text);
+        return var;
+    }
+
+    private Node find_local_var(String str){
         Node temp = null;
-        for(int i=0 ; i<var_list.size() ; i++){
+        for(int i = 0; i< local_var_list.size() ; i++){
+            if(local_var_list.get(i).id.equals(str))
+                temp = local_var_list.get(i);
+        }
+        return temp;
+    }
+
+    private Node find_var(String str){
+        Node temp = null;
+        for(int i = 0; i< var_list.size() ; i++){
             if(var_list.get(i).id.equals(str))
                 temp = var_list.get(i);
         }
@@ -274,27 +326,33 @@ public class UCodeGenListener extends MiniCBaseListener{
     class Node{
         String id;
         int num;
+        boolean isArray;
 
-        public Node(String id, int num) {
+        public Node(String id, int num, boolean isArray) {
             this.id = id;
             this.num = num;
+            this.isArray = isArray;
         }
     }
 
     private void stmtCheck(MiniCParser.StmtContext ctx) {
+        String str = "";
+
         if(ctx.getChild(0) == ctx.expr_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.expr_stmt()));
+            str += newTexts.get(ctx.expr_stmt());
 
         else if(ctx.getChild(0) == ctx.if_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.if_stmt()));
+            str += newTexts.get(ctx.if_stmt());
 
         else if(ctx.getChild(0) == ctx.while_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.while_stmt()));
+            str += newTexts.get(ctx.while_stmt());
 
         else if(ctx.getChild(0) == ctx.compound_stmt())
-            newTexts.put(ctx, newTexts.get(ctx.compound_stmt()));
+            str += newTexts.get(ctx.compound_stmt());
 
         else
-            newTexts.put(ctx, newTexts.get(ctx.return_stmt()));
+            str += newTexts.get(ctx.return_stmt());
+
+        newTexts.put(ctx, str);
     }
 }

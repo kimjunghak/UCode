@@ -1,8 +1,11 @@
 void main(){
     int i; int j; int k;
     int rem; int sum;
+    int arr[10];
 
     i=2;
+
+    test();
 
     while(i <= 500){
         sum = 0;
@@ -18,4 +21,8 @@ void main(){
         if(i == sum) write(i);
         ++i;
     }
+}
+
+void test(){
+    int x; int y;
 }

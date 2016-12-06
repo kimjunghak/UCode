@@ -1,19 +1,26 @@
 import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
  * Created by kjh on 16. 11. 26.
  */
-public class UCodeGenListener extends MiniCBaseListener {
+public class UCodeGenListener extends MiniCBaseListener{
 
     ParseTreeProperty<String> newTexts = new ParseTreeProperty<>();
     int var_num = 0;
+    int param_num = 0;
     int depth = 0;
     ArrayList<Node> var_list = new ArrayList<>();
 
+    public UCodeGenListener() throws IOException {
+    }
+
     @Override
-    public void exitProgram(MiniCParser.ProgramContext ctx) {
+    public void exitProgram(MiniCParser.ProgramContext ctx) throws IOException {
+        FileWriter writer = new FileWriter("/home/kimjunghak/Downloads/hw04/test.txt");
         String str = "";
         for(int i=0 ; i<ctx.decl().size() ; i++)
             str += newTexts.get(ctx.decl(i));
@@ -21,7 +28,10 @@ public class UCodeGenListener extends MiniCBaseListener {
         str += "           ret\n" + "           end\n" + "           bgn 0\n" + "           ldp\n"
                 + "           call main\n"   + "           end\n";
 
-        System.out.print(str);
+        //System.out.print(str);
+        writer.write(str);
+
+        writer.close();
     }
 
     @Override
@@ -44,10 +54,13 @@ public class UCodeGenListener extends MiniCBaseListener {
     @Override
     public void exitFun_decl(MiniCParser.Fun_declContext ctx) {
         String str = "";
+        String space = "";
         //String params = newTexts.get(ctx.params());
         String compound = newTexts.get(ctx.compound_stmt());
-        if(ctx.getChild(1).getText().equals("main"))
-            str += "main       proc " + var_num + " 2 2\n";
+        for(int i=0 ; i<11 - ctx.getChild(1).getText().length() ; i++)
+            space += " ";
+
+        str += ctx.getChild(1).getText() + space + "proc " + (param_num + var_num) + " 2 2\n";
 
         for(int i=0 ; i<var_num ; i++)
             str += "           sym 2 " + (i+1) + " 1\n";
@@ -59,11 +72,16 @@ public class UCodeGenListener extends MiniCBaseListener {
 
     @Override
     public void exitParams(MiniCParser.ParamsContext ctx) {
+        String str = "";
+        for(int i=0 ; i<ctx.param().size() ; i++)
+            str += newTexts.get(ctx.param(i));
 
+        newTexts.put(ctx, str);
     }
 
     @Override
     public void exitParam(MiniCParser.ParamContext ctx) {
+        param_num++;
 
     }
 
@@ -125,6 +143,9 @@ public class UCodeGenListener extends MiniCBaseListener {
             var_num++;
             var_list.add(new Node(ctx.getChild(1).getText(), var_num));
         }
+        else{
+
+        }
 
         newTexts.put(ctx, str);
     }
@@ -135,16 +156,17 @@ public class UCodeGenListener extends MiniCBaseListener {
         str += newTexts.get(ctx.expr());
         str += "           fjp $$" + depth + "\n";
 
-        if(ctx.getChildCount() == 5)
+        if(ctx.getChildCount() == 5) {
             depth++;
-        /*else {
-            depth++;
-            str += "$$" + (depth+1) + "        nop\n";
-            str += newTexts.get(ctx.stmt(1));
-        }*/
+            str += newTexts.get(ctx.stmt(0));
+        }
 
-        str += newTexts.get(ctx.stmt(0));
-        str += "$$" + (depth-1) + "        nop\n";
+        else {
+            depth++;
+            str += newTexts.get(ctx.stmt(1));
+        }
+
+        str += "$$" + (depth - 1) + "        nop\n";
 
         newTexts.put(ctx, str);
     }
@@ -180,6 +202,9 @@ public class UCodeGenListener extends MiniCBaseListener {
                 str += space + "inc\n";
                 str += space + "str 2 " + findNode(ctx.getChild(1).getText()).num + "\n";
             }
+
+            else if(ctx.getChild(0).getText().equals("!"))
+                str += space + "notop\n";
         }
 
         else if(ctx.getChildCount() == 3 && !ctx.getChild(1).getText().equals("=")){

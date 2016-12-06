@@ -1,6 +1,8 @@
 // Generated from C:/Users/KJH/IdeaProjects/UCode/src\MiniC.g4 by ANTLR 4.5.3
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
+import java.io.IOException;
+
 /**
  * This interface defines a complete listener for a parse tree produced by
  * {@link MiniCParser}.
@@ -15,7 +17,7 @@ public interface MiniCListener extends ParseTreeListener {
 	 * Exit a parse tree produced by {@link MiniCParser#program}.
 	 * @param ctx the parse tree
 	 */
-	void exitProgram(MiniCParser.ProgramContext ctx);
+	void exitProgram(MiniCParser.ProgramContext ctx) throws IOException;
 	/**
 	 * Enter a parse tree produced by {@link MiniCParser#decl}.
 	 * @param ctx the parse tree

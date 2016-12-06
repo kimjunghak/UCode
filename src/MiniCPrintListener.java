@@ -1,6 +1,8 @@
 
 import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
+import java.io.IOException;
+
 public class MiniCPrintListener extends MiniCBaseListener{
 	
 	ParseTreeProperty<String> newTexts = new ParseTreeProperty<String>();
@@ -8,7 +10,7 @@ public class MiniCPrintListener extends MiniCBaseListener{
 
 	// program	: decl+
 	@Override
-	public void exitProgram(MiniCParser.ProgramContext ctx) {
+	public void exitProgram(MiniCParser.ProgramContext ctx) throws IOException {
 		// TODO Auto-generated method stub
 		super.exitProgram(ctx);
 		String decl = "";

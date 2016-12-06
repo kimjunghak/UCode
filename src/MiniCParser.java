@@ -4,6 +4,8 @@ import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.*;
 import org.antlr.v4.runtime.tree.*;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;
@@ -111,7 +113,11 @@ public class MiniCParser extends Parser {
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof MiniCListener ) ((MiniCListener)listener).exitProgram(this);
+			if ( listener instanceof MiniCListener ) try {
+				((MiniCListener)listener).exitProgram(this);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 

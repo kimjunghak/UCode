@@ -3,10 +3,11 @@ void main(){
     int rem; int sum;
 
     i=2;
+
     while(i <= 500){
         sum = 0;
         k = i/2;
-        j=i;
+        j = 1;
         while(j<=k){
             rem =i%j;
             if(rem == 0){

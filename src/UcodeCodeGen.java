@@ -10,7 +10,7 @@ import java.io.IOException;
  */
 public class UcodeCodeGen {
     public static void main(String[] args) throws IOException {
-        MiniCLexer lexer = new MiniCLexer(new ANTLRFileStream("src/test2.c"));
+        MiniCLexer lexer = new MiniCLexer(new ANTLRFileStream("src/test.c"));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         MiniCParser parser = new MiniCParser(tokens);
         ParseTree tree = parser.program();

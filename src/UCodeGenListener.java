@@ -34,7 +34,7 @@ public class UCodeGenListener extends MiniCBaseListener{
         }
 
         str += "           bgn " + var_num + "\n";
-        for(int i=0 ; i<var_list.size() ; i++)
+        for(int i=0 ; i<literal_list.size() ; i++)
             str += literal_list.get(i);
         str += "           ldp\n" + "           call main\n"   + "           end\n";
 
@@ -303,6 +303,11 @@ public class UCodeGenListener extends MiniCBaseListener{
                 str += space + "ldp\n"
                         + newTexts.get(ctx.args())
                         + space + "call " + ctx.getChild(0).getText() + "\n";
+            }
+            else{
+                Node var = findNode(ctx.IDENT().getText());
+                str += newTexts.get(ctx.expr(0)) + space + "lda " + var.num + "\n"
+                        + space + "add\n";
             }
         }
 

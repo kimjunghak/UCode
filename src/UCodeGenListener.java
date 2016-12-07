@@ -114,7 +114,12 @@ public class UCodeGenListener extends MiniCBaseListener{
 
     @Override
     public void exitParam(MiniCParser.ParamContext ctx) {
-        local_var_list.add(new Node(ctx.getChild(1).getText(), "2 " + (++local_var_num), false));
+        String str = "";
+        Node temp = new Node(ctx.getChild(1).getText(), "2 " + (++local_var_num), false);
+        temp.isParam = true;
+        local_var_list.add(temp);
+
+        newTexts.put(ctx, str);
     }
 
     @Override
@@ -223,8 +228,12 @@ public class UCodeGenListener extends MiniCBaseListener{
 
         else if(isIdent(ctx)){ // IDENT
             Node var = findNode(ctx.IDENT().getText());
-
-            str += space + "lod " + var.num + "\n";
+            if(var.isArray == true) {
+                var.isArgs = true;
+                str += space + "lda " + var.num + "\n";
+            }
+            else
+                str += space + "lod " + var.num + "\n";
         }
 
         else if(ctx.getChildCount() == 2){ // op expr
@@ -308,8 +317,14 @@ public class UCodeGenListener extends MiniCBaseListener{
             }
             else{   // IDENT [ expr ]
                 Node var = findNode(ctx.IDENT().getText());
-                str += newTexts.get(ctx.expr(0)) + space + "lda " + var.num + "\n"
-                        + space + "add\n" + space + "ldi\n";
+                str += newTexts.get(ctx.expr(0));
+                if(var.isParam == false)
+                    str += space + "lda ";
+
+                else
+                    str += space + "lod ";
+
+                str +=  var.num + "\n" + space + "add\n" + space + "ldi\n";
             }
         }
 
@@ -376,6 +391,8 @@ public class UCodeGenListener extends MiniCBaseListener{
         String id;
         String num;
         boolean isArray;
+        boolean isParam = false;
+        boolean isArgs = false;
 
         public Node(String id, String num, boolean isArray) {
             this.id = id;

@@ -124,19 +124,7 @@ public class UCodeGenListener extends MiniCBaseListener{
 
     @Override
     public void exitExpr_stmt(MiniCParser.Expr_stmtContext ctx) {
-        String str = "";
-
-        if(ctx.expr().getChild(1).getText().equals("=")){
-            Node var;
-            var = findNode(ctx.expr().getChild(0).getText());
-
-            str += newTexts.get(ctx.expr().expr(0));
-            str += "           str " + var.num + "\n";
-        }
-
-        str += newTexts.get(ctx.expr());
-
-        newTexts.put(ctx, str);
+        newTexts.put(ctx, newTexts.get(ctx.expr()));
     }
 
     @Override
@@ -231,22 +219,23 @@ public class UCodeGenListener extends MiniCBaseListener{
         String str = "";
         String space = "           ";
 
-        if(isLiteral(ctx))
+        if(isLiteral(ctx)) // LITERAL
             str += space + "ldc " + ctx.LITERAL().getText() + "\n";
 
-        else if(isIdent(ctx)){
+        else if(isIdent(ctx)){ // IDENT
             Node var = findNode(ctx.IDENT().getText());
 
             str += space + "lod " + var.num + "\n";
         }
 
-        else if(ctx.getChildCount() == 2){
+        else if(ctx.getChildCount() == 2){ // 'op' expr
             str += newTexts.get(ctx.expr(0));
 
             Node var = findNode(ctx.getChild(1).getText());
 
             if(ctx.getChild(0).getText().equals("-"))
                 str += space + "neg\n";
+
             else if(ctx.getChild(0).getText().equals("--")) {
                 str += space + "dec\n";
                 str += space + "str " + var.num + "\n";
@@ -261,7 +250,7 @@ public class UCodeGenListener extends MiniCBaseListener{
                 str += space + "notop\n";
         }
 
-        else if(ctx.getChildCount() == 3 && !ctx.getChild(1).getText().equals("=")){
+        else if(isBinaryOp(ctx)){ // expr 'op' expr
             str += newTexts.get(ctx.expr(0)) + newTexts.get(ctx.expr(1));
 
             if(ctx.getChild(1).getText().equals(">"))
@@ -296,22 +285,37 @@ public class UCodeGenListener extends MiniCBaseListener{
 
             else if(ctx.getChild(1).getText().equals("=="))
                 str += space + "eq\n";
+
+            else if(ctx.getChild(1).getText().equals("and"))
+                str += space + "and\n";
+
+            else if(ctx.getChild(1).getText().equals("or"))
+                str += space + "or\n";
+        }
+
+        else if(ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals("=")){
+            // IDENT = expr
+            Node var;
+            var = findNode(ctx.getChild(0).getText());
+
+            str += newTexts.get(ctx.expr(0));
+            str += "           str " + var.num + "\n";
         }
 
         else if(ctx.getChildCount() == 4) {
-            if (ctx.args() != null) {
+            if (ctx.args() != null) { // IDENT ( args )
                 str += space + "ldp\n"
                         + newTexts.get(ctx.args())
                         + space + "call " + ctx.getChild(0).getText() + "\n";
             }
-            else{
+            else{ // IDENT [ expr ]
                 Node var = findNode(ctx.IDENT().getText());
                 str += newTexts.get(ctx.expr(0)) + space + "lda " + var.num + "\n"
                         + space + "add\n";
             }
         }
 
-        else if(ctx.getChildCount() == 6){
+        else if(ctx.getChildCount() == 6){ // IDENT [ expr ] = expr
             Node var = findNode(ctx.IDENT().getText());
             str += newTexts.get(ctx.expr(0))
                     + space + "lda " + var.num + "\n"
@@ -321,6 +325,7 @@ public class UCodeGenListener extends MiniCBaseListener{
 
         newTexts.put(ctx, str);
     }
+
 
     @Override
     public void exitArgs(MiniCParser.ArgsContext ctx) {
@@ -339,6 +344,9 @@ public class UCodeGenListener extends MiniCBaseListener{
         return ctx.getChildCount() == 1 && ctx.LITERAL() != null;
     }
 
+    private boolean isBinaryOp(MiniCParser.ExprContext ctx) {
+        return ctx.getChildCount() == 3 && !ctx.getChild(1).getText().equals("=");
+    }
 
     private Node findNode(String text) {
         Node var;

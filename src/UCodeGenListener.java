@@ -346,14 +346,8 @@ public class UCodeGenListener extends MiniCBaseListener{
     @Override
     public void exitArgs(MiniCParser.ArgsContext ctx) {
         String str = "";
-        Node temp;
-        for(int i=0 ; i<ctx.expr().size() ; i++) {
-            if(ctx.expr(i).IDENT() != null) {
-                temp = findNode(ctx.expr(i).IDENT().getText());
-                temp.isArgs = true;
-            }
+        for(int i=0 ; i<ctx.expr().size() ; i++)
             str += newTexts.get(ctx.expr(i));
-        }
 
         newTexts.put(ctx, str);
     }

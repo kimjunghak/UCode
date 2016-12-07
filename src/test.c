@@ -1,11 +1,9 @@
 void main(){
     int i; int j; int k;
     int rem; int sum;
-    int arr[10];
+    int c[10];
 
-    i=2;
-
-    test();
+    i = test(c, 3);
 
     while(i <= 500){
         sum = 0;
@@ -23,6 +21,7 @@ void main(){
     }
 }
 
-void test(){
-    int x; int y;
+int test(int arr[], int size){
+    arr[1] = 2;
+    return arr[1];
 }

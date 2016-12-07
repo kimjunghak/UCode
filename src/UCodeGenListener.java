@@ -117,6 +117,8 @@ public class UCodeGenListener extends MiniCBaseListener{
         String str = "";
         Node temp = new Node(ctx.getChild(1).getText(), "2 " + (++local_var_num), false);
         temp.isParam = true;
+        if(ctx.getChildCount() == 4)
+            temp.isArgs = true;
         local_var_list.add(temp);
 
         newTexts.put(ctx, str);
@@ -228,10 +230,8 @@ public class UCodeGenListener extends MiniCBaseListener{
 
         else if(isIdent(ctx)){ // IDENT
             Node var = findNode(ctx.IDENT().getText());
-            if(var.isArray == true) {
-                var.isArgs = true;
+            if(var.isArray == true)
                 str += space + "lda " + var.num + "\n";
-            }
             else
                 str += space + "lod " + var.num + "\n";
         }
@@ -318,7 +318,7 @@ public class UCodeGenListener extends MiniCBaseListener{
             else{   // IDENT [ expr ]
                 Node var = findNode(ctx.IDENT().getText());
                 str += newTexts.get(ctx.expr(0));
-                if(var.isParam == false)
+                if(var.isParam == false && var.isArgs == false)
                     str += space + "lda ";
 
                 else
@@ -330,10 +330,14 @@ public class UCodeGenListener extends MiniCBaseListener{
 
         else if(ctx.getChildCount() == 6){ // IDENT [ expr ] = expr
             Node var = findNode(ctx.IDENT().getText());
-            str += newTexts.get(ctx.expr(0))
-                    + space + "lda " + var.num + "\n"
-                    + space + "add\n" + newTexts.get(ctx.expr(1))
-                    + space + "sti\n";
+            str += newTexts.get(ctx.expr(0));
+
+            if(var.isArgs == true)
+                str += space + "lod " + var.num + "\n";
+            else
+                str += space + "lda " + var.num + "\n";
+
+            str +=space + "add\n" + newTexts.get(ctx.expr(1)) + space + "sti\n";
         }
 
         newTexts.put(ctx, str);
@@ -342,8 +346,14 @@ public class UCodeGenListener extends MiniCBaseListener{
     @Override
     public void exitArgs(MiniCParser.ArgsContext ctx) {
         String str = "";
-        for(int i=0 ; i<ctx.expr().size() ; i++)
+        Node temp;
+        for(int i=0 ; i<ctx.expr().size() ; i++) {
+            if(ctx.expr(i).IDENT() != null) {
+                temp = findNode(ctx.expr(i).IDENT().getText());
+                temp.isArgs = true;
+            }
             str += newTexts.get(ctx.expr(i));
+        }
 
         newTexts.put(ctx, str);
     }
